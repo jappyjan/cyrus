@@ -5,7 +5,7 @@ This changelog documents internal development changes, refactors, tooling update
 ## [Unreleased]
 
 ### Added
-- Added `cyrus-opencode-runner`, an OpenCode CLI runner adapter package with NDJSON event parsing, Cyrus SDK-shaped message projection, tool activity mapping, resume support, formatter coverage, and replay-fixture tests. ([NG-61](https://linear.app/digimondo/issue/NG-61/implement-cyrus-opencode-runner-package))
+- Added `cyrus-opencode-runner`, an OpenCode CLI runner adapter package with NDJSON event parsing, Cyrus SDK-shaped message projection, tool activity mapping, resume support, formatter coverage, and replay-fixture tests. ([NG-61](https://linear.app/digimondo/issue/NG-61/implement-cyrus-opencode-runner-package), [#1](https://github.com/JappyMondo/cyrus/pull/1))
 
 ## [0.2.52] - 2026-05-13
 
