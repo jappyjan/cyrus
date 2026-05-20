@@ -19,7 +19,7 @@ export class RunnerSelectionService {
 	 *
 	 * Priority:
 	 * 1. Explicit `defaultRunner` in config
-	 * 2. Auto-detect from available API keys (if exactly one runner has keys)
+	 * 2. Auto-detect from available provider credentials (if exactly one runner has keys)
 	 * 3. Fall back to "claude"
 	 */
 	public getDefaultRunner(): RunnerType {
@@ -52,7 +52,7 @@ export class RunnerSelectionService {
 	/**
 	 * Resolve default model for a given runner from config with sensible built-in defaults.
 	 */
-	public getDefaultModelForRunner(runnerType: RunnerType): string {
+	public getDefaultModelForRunner(runnerType: RunnerType): string | undefined {
 		if (runnerType === "claude") {
 			return (
 				this.config.claudeDefaultModel || this.config.defaultModel || "opus"
@@ -64,6 +64,9 @@ export class RunnerSelectionService {
 		if (runnerType === "cursor") {
 			return this.config.cursorDefaultModel || "composer-2";
 		}
+		if (runnerType === "opencode") {
+			return this.config.opencodeDefaultModel;
+		}
 		return this.config.codexDefaultModel || "gpt-5.3-codex";
 	}
 
@@ -71,7 +74,9 @@ export class RunnerSelectionService {
 	 * Resolve default fallback model for a given runner from config with sensible built-in defaults.
 	 * Supports legacy Claude fallback key for backwards compatibility.
 	 */
-	public getDefaultFallbackModelForRunner(runnerType: RunnerType): string {
+	public getDefaultFallbackModelForRunner(
+		runnerType: RunnerType,
+	): string | undefined {
 		if (runnerType === "claude") {
 			return (
 				this.config.claudeDefaultFallbackModel ||
@@ -87,6 +92,9 @@ export class RunnerSelectionService {
 		}
 		if (runnerType === "cursor") {
 			return this.config.cursorDefaultFallbackModel || "composer-2";
+		}
+		if (runnerType === "opencode") {
+			return this.config.opencodeDefaultFallbackModel;
 		}
 		return "gpt-5";
 	}
@@ -113,7 +121,7 @@ export class RunnerSelectionService {
 	 * Determine runner type and model using labels + issue description tags.
 	 *
 	 * Supported description tags:
-	 * - [agent=claude|gemini|codex|cursor]
+	 * - [agent=claude|gemini|codex|cursor|opencode]
 	 * - [model=<model-name>]
 	 *
 	 * Precedence:
@@ -141,25 +149,36 @@ export class RunnerSelectionService {
 			"model",
 		);
 
-		const defaultModelByRunner: Record<RunnerType, string> = {
+		const defaultModelByRunner: Record<RunnerType, string | undefined> = {
 			claude: this.getDefaultModelForRunner("claude"),
 			gemini: this.getDefaultModelForRunner("gemini"),
 			codex: this.getDefaultModelForRunner("codex"),
 			cursor: this.getDefaultModelForRunner("cursor"),
+			opencode: this.getDefaultModelForRunner("opencode"),
 		};
-		const defaultFallbackByRunner: Record<RunnerType, string> = {
+		const defaultFallbackByRunner: Record<RunnerType, string | undefined> = {
 			claude: this.getDefaultFallbackModelForRunner("claude"),
 			gemini: this.getDefaultFallbackModelForRunner("gemini"),
 			codex: this.getDefaultFallbackModelForRunner("codex"),
 			cursor: this.getDefaultFallbackModelForRunner("cursor"),
+			opencode: this.getDefaultFallbackModelForRunner("opencode"),
 		};
 
 		const isCodexModel = (model: string): boolean =>
 			/gpt-[a-z0-9.-]*codex$/i.test(model) || /^gpt-[a-z0-9.-]+$/i.test(model);
 
+		const isOpenCodeProviderModel = (model: string): boolean =>
+			/^[a-z0-9_.-]+\/[a-z0-9_.:/-]+$/i.test(model);
+
 		const inferRunnerFromModel = (model?: string): RunnerType | undefined => {
 			if (!model) return undefined;
 			const normalizedModel = model.toLowerCase();
+			if (
+				this.config.inferOpenCodeRunnerFromProviderModel &&
+				isOpenCodeProviderModel(normalizedModel)
+			) {
+				return "opencode";
+			}
 			if (normalizedModel.startsWith("gemini")) return "gemini";
 			if (
 				normalizedModel === "opus" ||
@@ -210,12 +229,18 @@ export class RunnerSelectionService {
 			if (isCodexModel(normalizedModel)) {
 				return "gpt-5.2-codex";
 			}
+			if (runnerType === "opencode") {
+				return defaultFallbackByRunner.opencode;
+			}
 			return "gpt-5";
 		};
 
 		const resolveAgentFromLabel = (
 			lowercaseLabels: string[],
 		): RunnerType | undefined => {
+			if (lowercaseLabels.includes("opencode")) {
+				return "opencode";
+			}
 			if (lowercaseLabels.includes("cursor")) {
 				return "cursor";
 			}
@@ -273,15 +298,18 @@ export class RunnerSelectionService {
 
 		const agentFromDescription = descriptionAgentTagRaw?.toLowerCase();
 		const resolvedAgentFromDescription =
-			agentFromDescription === "cursor"
-				? "cursor"
-				: agentFromDescription === "codex" || agentFromDescription === "openai"
-					? "codex"
-					: agentFromDescription === "gemini"
-						? "gemini"
-						: agentFromDescription === "claude"
-							? "claude"
-							: undefined;
+			agentFromDescription === "opencode"
+				? "opencode"
+				: agentFromDescription === "cursor"
+					? "cursor"
+					: agentFromDescription === "codex" ||
+							agentFromDescription === "openai"
+						? "codex"
+						: agentFromDescription === "gemini"
+							? "gemini"
+							: agentFromDescription === "claude"
+								? "claude"
+								: undefined;
 		const resolvedAgentFromLabels = resolveAgentFromLabel(normalizedLabels);
 
 		const modelFromDescription = descriptionModelTagRaw;
@@ -305,7 +333,9 @@ export class RunnerSelectionService {
 			modelOverride = defaultModelByRunner[runnerType];
 		}
 
-		let fallbackModelOverride = inferFallbackModel(modelOverride, runnerType);
+		let fallbackModelOverride = modelOverride
+			? inferFallbackModel(modelOverride, runnerType)
+			: undefined;
 		if (!fallbackModelOverride) {
 			fallbackModelOverride = defaultFallbackByRunner[runnerType];
 		}
