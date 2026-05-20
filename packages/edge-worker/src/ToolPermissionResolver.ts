@@ -105,7 +105,11 @@ export class ToolPermissionResolver {
 
 		if (repoArray.length === 0) {
 			// No repos — fall back to global defaults or safe tools
-			const baseTools = this.config.defaultAllowedTools || getSafeTools();
+			const baseTools =
+				this.config.defaultAllowedTools &&
+				this.config.defaultAllowedTools.length > 0
+					? this.config.defaultAllowedTools
+					: getSafeTools();
 			return [...new Set([...baseTools, ...this.getWorkspaceMcpTools()])];
 		}
 
@@ -178,7 +182,10 @@ export class ToolPermissionResolver {
 			return repository.allowedTools;
 		}
 		// 4. Global default allowed tools
-		if (this.config.defaultAllowedTools) {
+		if (
+			this.config.defaultAllowedTools &&
+			this.config.defaultAllowedTools.length > 0
+		) {
 			return this.config.defaultAllowedTools;
 		}
 		// 5. Fall back to safe tools

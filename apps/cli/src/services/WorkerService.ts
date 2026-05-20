@@ -8,6 +8,14 @@ import type { Workspace } from "../config/types.js";
 import type { ConfigService } from "./ConfigService.js";
 import type { Logger } from "./Logger.js";
 
+function parseToolEnv(value: string | undefined): string[] | undefined {
+	const tools = value
+		?.split(",")
+		.map((tool) => tool.trim())
+		.filter(Boolean);
+	return tools && tools.length > 0 ? tools : undefined;
+}
+
 /**
  * Service responsible for EdgeWorker and Cloudflare tunnel management
  */
@@ -194,11 +202,8 @@ export class WorkerService {
 			version: this.version,
 			repositories,
 			cyrusHome: this.cyrusHome,
-			defaultAllowedTools:
-				process.env.ALLOWED_TOOLS?.split(",").map((t) => t.trim()) || [],
-			defaultDisallowedTools:
-				process.env.DISALLOWED_TOOLS?.split(",").map((t) => t.trim()) ||
-				undefined,
+			defaultAllowedTools: parseToolEnv(process.env.ALLOWED_TOOLS),
+			defaultDisallowedTools: parseToolEnv(process.env.DISALLOWED_TOOLS),
 			// Model configuration: environment variables take precedence over config file.
 			// Legacy env vars/keys are still accepted for backwards compatibility.
 			claudeDefaultModel:

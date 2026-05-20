@@ -5,7 +5,7 @@ This changelog documents internal development changes, refactors, tooling update
 ## [Unreleased]
 
 ### Added
-- Added OpenCode runner validation coverage with richer replay fixtures, activity timeline mapping tests, guarded live probe documentation, runner-selection assertions, and an NG-64 F1 test-drive report. ([NG-64](https://linear.app/digimondo/issue/NG-64/validate-opencode-runner-end-to-end-with-tests-and-f1), [#4](https://github.com/JappyMondo/cyrus/pull/4))
+- Added OpenCode runner validation coverage with richer replay fixtures, activity timeline mapping tests, guarded live probe documentation, runner-selection assertions, empty-default tool permission regression coverage, and NG-64 F1 test-drive reports. ([NG-64](https://linear.app/digimondo/issue/NG-64/validate-opencode-runner-end-to-end-with-tests-and-f1), [#4](https://github.com/JappyMondo/cyrus/pull/4))
 - Added `cyrus-opencode-runner`, an OpenCode CLI runner adapter package with NDJSON event parsing, Cyrus SDK-shaped message projection, tool activity mapping, resume support, formatter coverage, and replay-fixture tests. ([NG-61](https://linear.app/digimondo/issue/NG-61/implement-cyrus-opencode-runner-package), [#1](https://github.com/JappyMondo/cyrus/pull/1))
 
 ## [0.2.52] - 2026-05-13
