@@ -229,6 +229,7 @@ export class ConfigManager extends EventEmitter {
 				opencodeDefaultFallbackModel:
 					parsedConfig.opencodeDefaultFallbackModel ||
 					this.config.opencodeDefaultFallbackModel,
+				opencode: parsedConfig.opencode ?? this.config.opencode,
 				inferOpenCodeRunnerFromProviderModel:
 					parsedConfig.inferOpenCodeRunnerFromProviderModel ??
 					this.config.inferOpenCodeRunnerFromProviderModel,
@@ -336,6 +337,7 @@ export class ConfigManager extends EventEmitter {
 			"cursorDefaultFallbackModel",
 			"opencodeDefaultModel",
 			"opencodeDefaultFallbackModel",
+			"opencode",
 			"inferOpenCodeRunnerFromProviderModel",
 			"defaultModel",
 			"defaultFallbackModel",

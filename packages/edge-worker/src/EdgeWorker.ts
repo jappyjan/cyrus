@@ -1033,6 +1033,7 @@ export class EdgeWorker extends EventEmitter {
 						fallbackModel: this.getDefaultFallbackModelForRunner(runnerType),
 					});
 				},
+				getOpenCodeGlobalConfig: () => this.config.opencode?.config,
 				onWebhookStart: () => {
 					this.activeWebhookCount++;
 				},
