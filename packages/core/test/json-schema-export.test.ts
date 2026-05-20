@@ -43,6 +43,8 @@ describe("JSON Schema export", () => {
 				"claudeDefaultFallbackModel",
 				"geminiDefaultModel",
 				"codexDefaultModel",
+				"opencodeDefaultModel",
+				"opencodeDefaultFallbackModel",
 				"defaultRunner",
 				"defaultModel",
 				"defaultFallbackModel",
@@ -68,6 +70,7 @@ describe("JSON Schema export", () => {
 				"gemini",
 				"codex",
 				"cursor",
+				"opencode",
 			]);
 		});
 

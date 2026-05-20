@@ -163,7 +163,11 @@ export class ChatSessionHandler<TEvent> {
 					);
 
 					const resumeSessionId =
-						existingSession.claudeSessionId || existingSession.geminiSessionId;
+						existingSession.claudeSessionId ||
+						existingSession.geminiSessionId ||
+						existingSession.codexSessionId ||
+						existingSession.cursorSessionId ||
+						existingSession.opencodeSessionId;
 
 					if (resumeSessionId) {
 						try {

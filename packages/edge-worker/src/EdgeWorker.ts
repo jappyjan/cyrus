@@ -131,6 +131,7 @@ import {
 	type CyrusToolsOptions,
 	createCyrusToolsServer,
 } from "cyrus-mcp-tools";
+import { OpenCodeRunner } from "cyrus-opencode-runner";
 import {
 	SlackEventTransport,
 	type SlackWebhookEvent,
@@ -5119,7 +5120,7 @@ ${taskSection}`;
 	 * Instantiate the appropriate runner for the given type.
 	 */
 	private createRunnerForType(
-		runnerType: "claude" | "gemini" | "codex" | "cursor",
+		runnerType: RunnerType,
 		config: AgentRunnerConfig,
 	): IAgentRunner {
 		switch (runnerType) {
@@ -5137,6 +5138,8 @@ ${taskSection}`;
 				return new CodexRunner(config);
 			case "cursor":
 				return new CursorRunner(config);
+			case "opencode":
+				return new OpenCodeRunner(config);
 			default:
 				throw new Error(`Unknown runner type: ${runnerType satisfies never}`);
 		}
@@ -6803,12 +6806,15 @@ ${input.userComment}
 		const hasGeminiSession = !isNewSession && Boolean(session.geminiSessionId);
 		const hasCodexSession = !isNewSession && Boolean(session.codexSessionId);
 		const hasCursorSession = !isNewSession && Boolean(session.cursorSessionId);
+		const hasOpenCodeSession =
+			!isNewSession && Boolean(session.opencodeSessionId);
 		const needsNewSession =
 			isNewSession ||
 			(!hasClaudeSession &&
 				!hasGeminiSession &&
 				!hasCodexSession &&
-				!hasCursorSession);
+				!hasCursorSession &&
+				!hasOpenCodeSession);
 
 		// Fetch system prompt based on labels
 
@@ -6849,7 +6855,9 @@ ${input.userComment}
 					? session.geminiSessionId
 					: session.codexSessionId
 						? session.codexSessionId
-						: session.cursorSessionId;
+						: session.cursorSessionId
+							? session.cursorSessionId
+							: session.opencodeSessionId;
 
 		console.log(
 			`[resumeAgentSession] needsNewSession=${needsNewSession}, resumeSessionId=${resumeSessionId ?? "none"}`,
