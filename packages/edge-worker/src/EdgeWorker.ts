@@ -5102,7 +5102,7 @@ ${taskSection}`;
 	 * Resolve default model for a given runner from config with sensible built-in defaults.
 	 * Supports legacy config keys for backwards compatibility.
 	 */
-	private getDefaultModelForRunner(runnerType: RunnerType): string {
+	private getDefaultModelForRunner(runnerType: RunnerType): string | undefined {
 		return this.runnerSelectionService.getDefaultModelForRunner(runnerType);
 	}
 
@@ -5110,7 +5110,9 @@ ${taskSection}`;
 	 * Resolve default fallback model for a given runner from config with sensible built-in defaults.
 	 * Supports legacy Claude fallback key for backwards compatibility.
 	 */
-	private getDefaultFallbackModelForRunner(runnerType: RunnerType): string {
+	private getDefaultFallbackModelForRunner(
+		runnerType: RunnerType,
+	): string | undefined {
 		return this.runnerSelectionService.getDefaultFallbackModelForRunner(
 			runnerType,
 		);
