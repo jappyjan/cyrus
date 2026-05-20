@@ -1,4 +1,10 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type {
@@ -13,8 +19,12 @@ function makeTempDir(): string {
 	return mkdtempSync(join(tmpdir(), "cyrus-opencode-runner-"));
 }
 
-function fixtureLines(): string {
-	const url = new URL("./fixtures/opencode-run-sample.jsonl", import.meta.url);
+function fixtureLines(
+	name:
+		| "opencode-run-sample.jsonl"
+		| "opencode-run-realistic.jsonl" = "opencode-run-sample.jsonl",
+): string {
+	const url = new URL(`./fixtures/${name}`, import.meta.url);
 	return readFileSync(url, "utf8");
 }
 
@@ -27,7 +37,7 @@ function writeFakeOpenCode(
 	writeFileSync(
 		script,
 		`#!/usr/bin/env node
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 const stdin = readFileSync(0, "utf8");
 writeFileSync(${JSON.stringify(captureFile)}, JSON.stringify({ argv: process.argv.slice(2), stdin }));
 ${body}
@@ -142,6 +152,81 @@ describe("OpenCodeRunner", () => {
 		expect(result.usage.cache_read_input_tokens).toBe(3);
 	});
 
+	it("coerces realistic OpenCode JSON events into Cyrus messages and final result", async () => {
+		const dir = makeTempDir();
+		const opencodePath = writeFakeOpenCode(
+			dir,
+			`process.stdout.write(${JSON.stringify(fixtureLines("opencode-run-realistic.jsonl"))});`,
+		);
+		const runner = new OpenCodeRunner({
+			openCodePath: opencodePath,
+			workingDirectory: dir,
+			cyrusHome: dir,
+			model: "openai/gpt-5.5",
+		});
+
+		const session = await runner.start("Replay a realistic OpenCode run");
+
+		expect(session.sessionId).toBe("oc_realistic_456");
+		const allMessages = runner.getMessages();
+
+		const readUse = allMessages.find(
+			(message) =>
+				message.type === "assistant" &&
+				(message as SDKAssistantMessage).message.content.some(
+					(block: any) => block.type === "tool_use" && block.id === "read_1",
+				),
+		) as SDKAssistantMessage | undefined;
+		expect(readUse).toBeDefined();
+		expect((readUse?.message.content[0] as any).name).toBe("Read");
+		expect((readUse?.message.content[0] as any).input).toMatchObject({
+			filePath: "/tmp/f1-test/src/index.ts",
+			file_path: "/tmp/f1-test/src/index.ts",
+		});
+
+		const erroredToolResult = allMessages.find(
+			(message) =>
+				message.type === "user" &&
+				(message as SDKUserMessage).message.content.some(
+					(block: any) =>
+						block.type === "tool_result" && block.tool_use_id === "shell_1",
+				),
+		) as SDKUserMessage | undefined;
+		expect(erroredToolResult).toBeDefined();
+		expect((erroredToolResult?.message.content[0] as any).is_error).toBe(true);
+		expect((erroredToolResult?.message.content[0] as any).content).toContain(
+			"No projects matched the filter",
+		);
+
+		const editResult = allMessages.find(
+			(message) =>
+				message.type === "user" &&
+				(message as SDKUserMessage).message.content.some(
+					(block: any) =>
+						block.type === "tool_result" && block.tool_use_id === "edit_1",
+				),
+		) as SDKUserMessage | undefined;
+		expect(editResult).toBeDefined();
+		expect((editResult?.message.content[0] as any).content).toContain(
+			"OpenCodeProbe",
+		);
+
+		const result = allMessages.at(-1) as SDKResultMessage;
+		expect(result).toMatchObject({
+			type: "result",
+			subtype: "success",
+			is_error: false,
+			result: "Validated OpenCode transcript replay.",
+			session_id: "oc_realistic_456",
+			stop_reason: "end_turn",
+			total_cost_usd: 0.0123,
+		});
+		expect(result.usage.input_tokens).toBe(321);
+		expect(result.usage.output_tokens).toBe(45);
+		expect(result.usage.cache_read_input_tokens).toBe(7);
+		expect(result.usage.cache_creation_input_tokens).toBe(2);
+	});
+
 	it("passes resume session id through --session", async () => {
 		const dir = makeTempDir();
 		const captureFile = join(dir, "capture.json");
@@ -229,6 +314,61 @@ process.stdout.write(${JSON.stringify(fixtureLines())});
 				linear_get_issue: "allow",
 			},
 		});
+	});
+
+	it("does not copy Cyrus skills or synthesize bootstrap skills into OpenCode config", async () => {
+		const dir = makeTempDir();
+		const pluginPath = join(dir, "cyrus-skills-plugin");
+		const skillPath = join(pluginPath, "skills", "debug");
+		const captureFile = join(dir, "capture.json");
+		mkdirSync(skillPath, { recursive: true });
+		writeFileSync(
+			join(skillPath, "SKILL.md"),
+			[
+				"---",
+				"name: debug",
+				"description: Debug a reported issue",
+				"---",
+				"Reproduce the bug before fixing it.",
+			].join("\n"),
+			{ flag: "w" },
+		);
+		const opencodePath = writeFakeOpenCode(
+			dir,
+			`
+writeFileSync(${JSON.stringify(captureFile)}, JSON.stringify({
+  opencodeConfigDir: process.env.OPENCODE_CONFIG_DIR,
+  debugSkillExists: process.env.OPENCODE_CONFIG_DIR
+    && existsSync(process.env.OPENCODE_CONFIG_DIR + "/skills/debug/SKILL.md")
+    ? readFileSync(process.env.OPENCODE_CONFIG_DIR + "/skills/debug/SKILL.md", "utf8").includes("Debug a reported issue")
+    : false,
+  skillsDirectoryExists: process.env.OPENCODE_CONFIG_DIR
+    && existsSync(process.env.OPENCODE_CONFIG_DIR + "/skills"),
+}));
+process.stdout.write(${JSON.stringify(fixtureLines())});
+`,
+			captureFile,
+		);
+		const runner = new OpenCodeRunner({
+			openCodePath: opencodePath,
+			workingDirectory: dir,
+			cyrusHome: dir,
+			allowedTools: ["Skill"],
+			plugins: [{ type: "local", path: pluginPath } as any],
+			skills: ["debug"],
+		});
+
+		await runner.start("Use the configured local workflow");
+
+		const capture = JSON.parse(readFileSync(captureFile, "utf8"));
+		expect(capture.opencodeConfigDir).toBeTruthy();
+		expect(capture.debugSkillExists).toBe(false);
+		expect(capture.skillsDirectoryExists).toBe(false);
+		expect(
+			existsSync(
+				join(capture.opencodeConfigDir, "skills", "debug", "SKILL.md"),
+			),
+		).toBe(false);
 	});
 
 	it("stops a running OpenCode process", async () => {

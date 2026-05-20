@@ -390,6 +390,7 @@ export function buildOpenCodeRuntimeEnv(
 	// ~/.local/share/opencode and friends.
 	return {
 		OPENCODE_CONFIG_CONTENT: JSON.stringify(built.config),
+		OPENCODE_CONFIG_DIR: join(stateRoot, "opencode-config"),
 		XDG_DATA_HOME: join(stateRoot, "data"),
 		XDG_STATE_HOME: join(stateRoot, "state"),
 		XDG_CACHE_HOME: join(stateRoot, "cache"),
@@ -411,6 +412,7 @@ export function ensureOpenCodeStateDirectories(
 	env: Record<string, string>,
 ): void {
 	for (const key of [
+		"OPENCODE_CONFIG_DIR",
 		"XDG_DATA_HOME",
 		"XDG_STATE_HOME",
 		"XDG_CACHE_HOME",

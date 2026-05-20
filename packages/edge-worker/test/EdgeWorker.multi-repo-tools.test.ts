@@ -380,6 +380,28 @@ describe("EdgeWorker - Multi-Repo Tool Authorization", () => {
 			]);
 		});
 
+		it("should treat empty global defaults as unset for repository sessions", () => {
+			const configEmptyDefaults: EdgeWorkerConfig = {
+				...mockConfig,
+				defaultAllowedTools: [],
+			};
+			const ew = new EdgeWorker(configEmptyDefaults);
+			const buildAllowedTools = getBuildAllowedTools(ew);
+			const repository: RepositoryConfig = {
+				...mockConfig.repositories[0],
+				allowedTools: undefined,
+			};
+
+			const tools = buildAllowedTools(repository);
+
+			expect(tools).toEqual([
+				...getSafeTools(),
+				"mcp__linear",
+				"mcp__cyrus-tools",
+				"mcp__cyrus-docs",
+			]);
+		});
+
 		it("should still work with a single repository (backwards compatible)", () => {
 			const repository: RepositoryConfig = {
 				...mockConfig.repositories[0],
