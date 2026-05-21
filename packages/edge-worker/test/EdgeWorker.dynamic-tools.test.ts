@@ -370,7 +370,7 @@ describe("EdgeWorker - Dynamic Tools Configuration", () => {
 			]);
 		});
 
-		it("should fall back to safe tools when no configuration is provided", () => {
+		it("should fall back to all standard tools when no configuration is provided", () => {
 			const configWithoutDefaults: EdgeWorkerConfig = {
 				...mockConfig,
 				defaultAllowedTools: undefined,
@@ -385,11 +385,12 @@ describe("EdgeWorker - Dynamic Tools Configuration", () => {
 
 			const tools = buildAllowedTools(repository);
 			expect(tools).toEqual([
-				...getSafeTools(),
+				...getAllTools(),
 				"mcp__linear",
 				"mcp__cyrus-tools",
 				"mcp__cyrus-docs",
 			]);
+			expect(tools).toContain("Bash");
 		});
 
 		it("should always include Linear MCP tools", () => {

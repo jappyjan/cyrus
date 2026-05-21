@@ -104,7 +104,9 @@ export class ToolPermissionResolver {
 			: [repositories];
 
 		if (repoArray.length === 0) {
-			// No repos — fall back to global defaults or safe tools
+			// Issue-session default: missing/empty global defaults mean the same
+			// standard interactive tool set used by every runner, including Bash
+			// and file-edit tools. Chat sessions use buildChatAllowedTools instead.
 			const baseTools =
 				this.config.defaultAllowedTools &&
 				this.config.defaultAllowedTools.length > 0
@@ -188,7 +190,9 @@ export class ToolPermissionResolver {
 		) {
 			return this.config.defaultAllowedTools;
 		}
-		// 5. Fall back to the standard interactive tool set
+		// 5. Fall back to the standard interactive issue-session tool set.
+		// Empty CLI env parses to undefined, so it intentionally lands here
+		// instead of becoming an MCP-only or read-only session.
 		return getAllTools();
 	}
 
