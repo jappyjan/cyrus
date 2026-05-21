@@ -133,7 +133,7 @@ vi.mock("fs/promises", () => ({
 }));
 
 import { LinearClient } from "@linear/sdk";
-import { getReadOnlyTools, getSafeTools } from "cyrus-claude-runner";
+import { getAllTools, getReadOnlyTools } from "cyrus-claude-runner";
 import { LinearEventTransport } from "cyrus-linear-event-transport";
 import { AgentSessionManager } from "../src/AgentSessionManager.js";
 import { EdgeWorker } from "../src/EdgeWorker.js";
@@ -363,7 +363,7 @@ describe("EdgeWorker - Multi-Repo Tool Authorization", () => {
 			]);
 		});
 
-		it("should fall back to safe tools for empty array when no global defaults", () => {
+		it("should fall back to all standard tools for empty array when no global defaults", () => {
 			const configNoDefaults: EdgeWorkerConfig = {
 				...mockConfig,
 				defaultAllowedTools: undefined,
@@ -373,11 +373,12 @@ describe("EdgeWorker - Multi-Repo Tool Authorization", () => {
 			const tools = buildAllowedTools([]);
 
 			expect(tools).toEqual([
-				...getSafeTools(),
+				...getAllTools(),
 				"mcp__linear",
 				"mcp__cyrus-tools",
 				"mcp__cyrus-docs",
 			]);
+			expect(tools).toContain("Bash");
 		});
 
 		it("should treat empty global defaults as unset for repository sessions", () => {
@@ -395,11 +396,12 @@ describe("EdgeWorker - Multi-Repo Tool Authorization", () => {
 			const tools = buildAllowedTools(repository);
 
 			expect(tools).toEqual([
-				...getSafeTools(),
+				...getAllTools(),
 				"mcp__linear",
 				"mcp__cyrus-tools",
 				"mcp__cyrus-docs",
 			]);
+			expect(tools).toContain("Bash");
 		});
 
 		it("should still work with a single repository (backwards compatible)", () => {
