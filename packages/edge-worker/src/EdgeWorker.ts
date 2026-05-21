@@ -1034,6 +1034,7 @@ export class EdgeWorker extends EventEmitter {
 					});
 				},
 				getOpenCodeGlobalConfig: () => this.config.opencode?.config,
+				getOpenCodeGlobalStateScope: () => this.config.opencode?.stateScope,
 				onWebhookStart: () => {
 					this.activeWebhookCount++;
 				},
@@ -6139,6 +6140,7 @@ ${input.userComment}
 			logger: log,
 			plugins,
 			opencodeGlobalConfig: this.config.opencode?.config,
+			opencodeGlobalStateScope: this.config.opencode?.stateScope,
 			skills: allowedSkillNames,
 			sandboxSettings: this.sdkSandboxSettings ?? undefined,
 			egressCaCertPath: this.egressCaCertPath ?? undefined,
