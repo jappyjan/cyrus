@@ -109,7 +109,7 @@ export class ToolPermissionResolver {
 				this.config.defaultAllowedTools &&
 				this.config.defaultAllowedTools.length > 0
 					? this.config.defaultAllowedTools
-					: getSafeTools();
+					: getAllTools();
 			return [...new Set([...baseTools, ...this.getWorkspaceMcpTools()])];
 		}
 
@@ -188,8 +188,8 @@ export class ToolPermissionResolver {
 		) {
 			return this.config.defaultAllowedTools;
 		}
-		// 5. Fall back to safe tools
-		return getSafeTools();
+		// 5. Fall back to the standard interactive tool set
+		return getAllTools();
 	}
 
 	/**

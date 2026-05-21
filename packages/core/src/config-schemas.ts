@@ -58,6 +58,44 @@ export const UserAccessControlConfigSchema = z.object({
 	blockMessage: z.string().optional(),
 });
 
+export type JsonValue =
+	| string
+	| number
+	| boolean
+	| null
+	| JsonValue[]
+	| { [key: string]: JsonValue };
+
+export const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+	z.union([
+		z.string(),
+		z.number(),
+		z.boolean(),
+		z.null(),
+		z.array(JsonValueSchema),
+		z.record(z.string(), JsonValueSchema),
+	]),
+);
+
+export type JsonObject = { [key: string]: JsonValue };
+
+export const JsonObjectSchema: z.ZodType<JsonObject> = z.record(
+	z.string(),
+	JsonValueSchema,
+);
+
+export const OpenCodeStateScopeSchema = z.enum([
+	"inherit",
+	"shared",
+	"repository",
+]);
+export type OpenCodeStateScope = z.infer<typeof OpenCodeStateScopeSchema>;
+
+export const OpenCodeConfigSchema = z.object({
+	stateScope: OpenCodeStateScopeSchema.optional(),
+	config: JsonObjectSchema.optional(),
+});
+
 /**
  * Tool restriction options for label-based prompts
  */
@@ -317,6 +355,9 @@ export const RepositoryConfigSchema = z.object({
 
 	// Repository-specific user access control
 	userAccessControl: UserAccessControlConfigSchema.optional(),
+
+	// Repository-specific OpenCode runtime config overrides
+	opencode: OpenCodeConfigSchema.optional(),
 });
 
 /**
@@ -373,6 +414,9 @@ export const EdgeConfigSchema = z.object({
 
 	/** Infer OpenCode runner when a model selector uses OpenCode provider/model syntax (e.g., "anthropic/claude-sonnet-4.5") */
 	inferOpenCodeRunnerFromProviderModel: z.boolean().optional(),
+
+	/** Global OpenCode runtime config overrides */
+	opencode: OpenCodeConfigSchema.optional(),
 
 	/**
 	 * Default runner/harness to use when no runner is specified via labels or description tags.
@@ -528,6 +572,7 @@ export type UserAccessControlConfig = z.infer<
 	typeof UserAccessControlConfigSchema
 >;
 export type LinearWorkspaceConfig = z.infer<typeof LinearWorkspaceConfigSchema>;
+export type OpenCodeConfigOverrides = z.infer<typeof OpenCodeConfigSchema>;
 export type RepositoryConfig = z.infer<typeof RepositoryConfigSchema>;
 export type EdgeConfig = z.infer<typeof EdgeConfigSchema>;
 export type SandboxConfig = z.infer<typeof SandboxConfigSchema>;

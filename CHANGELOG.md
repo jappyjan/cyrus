@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Configurable OpenCode CLI state scope** — OpenCode sessions now default to inheriting the same CLI auth storage as the Cyrus process, with optional `shared` or per-`repository` Cyrus-managed state roots for users who want dedicated agent storage.
+- **OpenCode runtime config overrides** — Self-hosted users can now define global and per-repository OpenCode runtime config while Cyrus keeps generated MCP servers and permission safety controls authoritative.
 - **Safer OpenCode runner configuration** — OpenCode sessions now receive Cyrus MCP servers and conservative tool permissions through runtime config, with OpenCode state isolated under the Cyrus home directory instead of the default user state path. ([NG-63](https://linear.app/digimondo/issue/NG-63/translate-opencode-mcp-and-permission-configuration-safely), [#3](https://github.com/JappyMondo/cyrus/pull/3))
 - **OpenCode runner selection** — Cyrus can now route sessions to OpenCode with an `opencode` label or `[agent=opencode]` issue description selector, supports OpenCode default/fallback model config, and can optionally infer OpenCode from `provider/model` selectors with `inferOpenCodeRunnerFromProviderModel`. ([NG-62](https://linear.app/digimondo/issue/NG-62/wire-opencode-runner-into-cyrus-selection-and-config), [#2](https://github.com/JappyMondo/cyrus/pull/2))
 

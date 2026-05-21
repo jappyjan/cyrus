@@ -105,7 +105,7 @@ describe("OpenCode config translation", () => {
 		);
 	});
 
-	it("builds inline config and isolates OpenCode state under Cyrus home", () => {
+	it("builds inline config and inherits terminal state by default", () => {
 		const env = buildOpenCodeRuntimeEnv({
 			workingDirectory: "/work/repo",
 			cyrusHome: "/tmp/cyrus",
@@ -121,12 +121,215 @@ describe("OpenCode config translation", () => {
 				},
 			},
 		});
+		expect(env.OPENCODE_CONFIG_DIR).toBeUndefined();
+		expect(env.XDG_DATA_HOME).toBeUndefined();
+		expect(env.XDG_STATE_HOME).toBeUndefined();
+		expect(env.XDG_CACHE_HOME).toBeUndefined();
+		expect(env.XDG_CONFIG_HOME).toBeUndefined();
+	});
+
+	it("can use shared Cyrus OpenCode state across sessions", () => {
+		const env = buildOpenCodeRuntimeEnv({
+			workingDirectory: "/work/repo",
+			cyrusHome: "/tmp/cyrus",
+			opencodeStateScope: "shared",
+			allowedTools: ["Read(**)"],
+		});
+
 		expect(env.OPENCODE_CONFIG_DIR).toBe(
-			"/tmp/cyrus/opencode-state/repo/opencode-config",
+			"/tmp/cyrus/opencode-state/shared/opencode-config",
 		);
 		expect(env.XDG_DATA_HOME).toBeUndefined();
-		expect(env.XDG_STATE_HOME).toBe("/tmp/cyrus/opencode-state/repo/state");
-		expect(env.XDG_CACHE_HOME).toBe("/tmp/cyrus/opencode-state/repo/cache");
-		expect(env.XDG_CONFIG_HOME).toBe("/tmp/cyrus/opencode-state/repo/config");
+		expect(env.XDG_STATE_HOME).toBe("/tmp/cyrus/opencode-state/shared/state");
+		expect(env.XDG_CACHE_HOME).toBe("/tmp/cyrus/opencode-state/shared/cache");
+		expect(env.XDG_CONFIG_HOME).toBe("/tmp/cyrus/opencode-state/shared/config");
+	});
+
+	it("can use repository-scoped Cyrus OpenCode state across issues", () => {
+		const env = buildOpenCodeRuntimeEnv({
+			workingDirectory: "/work/repo",
+			cyrusHome: "/tmp/cyrus",
+			opencodeStateScope: "repository",
+			opencodeStateKey: "main-app",
+			workspaceName: "NG-71",
+			allowedTools: ["Read(**)"],
+		});
+
+		expect(env.OPENCODE_CONFIG_DIR).toBe(
+			"/tmp/cyrus/opencode-state/repositories/main-app/opencode-config",
+		);
+		expect(env.XDG_DATA_HOME).toBeUndefined();
+		expect(env.XDG_STATE_HOME).toBe(
+			"/tmp/cyrus/opencode-state/repositories/main-app/state",
+		);
+		expect(env.XDG_CACHE_HOME).toBe(
+			"/tmp/cyrus/opencode-state/repositories/main-app/cache",
+		);
+		expect(env.XDG_CONFIG_HOME).toBe(
+			"/tmp/cyrus/opencode-state/repositories/main-app/config",
+		);
+	});
+
+	it("merges global and repository OpenCode config before Cyrus-generated config", () => {
+		const result = buildOpenCodeConfig({
+			workingDirectory: "/work/repo",
+			cyrusHome: "/tmp/cyrus",
+			opencodeGlobalConfig: {
+				plugin: ["global-plugin"],
+				permission: {
+					"*": "allow",
+					skill: { "global-*": "allow" },
+				},
+				mcp: {
+					linear: { type: "remote", url: "https://user.example/mcp" },
+				},
+				instructions: ["GLOBAL.md"],
+			},
+			opencodeRepositoryConfig: {
+				plugin: ["repo-plugin"],
+				permission: {
+					skill: { "repo-*": "allow" },
+				},
+				mcp: {
+					"repo-tool": {
+						type: "local",
+						command: ["node", "./tools/mcp.js"],
+						enabled: true,
+					},
+				},
+				instructions: ["REPO.md"],
+			},
+			allowedTools: ["Read(**)", "mcp__linear__get_issue"],
+			mcpConfig: {
+				linear: {
+					type: "http",
+					url: "https://mcp.linear.app/mcp",
+					headers: { Authorization: "Bearer token" },
+				} as any,
+			},
+		});
+
+		expect(result.config).toMatchObject({
+			plugin: ["repo-plugin"],
+			instructions: ["REPO.md"],
+			mcp: {
+				linear: {
+					type: "remote",
+					url: "https://mcp.linear.app/mcp",
+					headers: { Authorization: "Bearer token" },
+					enabled: true,
+				},
+				"repo-tool": {
+					type: "local",
+					command: ["node", "./tools/mcp.js"],
+					enabled: true,
+				},
+			},
+			permission: {
+				"*": "deny",
+				read: {
+					"*": "deny",
+					"**": "allow",
+				},
+				linear_get_issue: "allow",
+			},
+		});
+		expect(
+			(result.config.permission as Record<string, unknown>).skill,
+		).toBeUndefined();
+	});
+
+	it("passes arbitrary JSON-compatible OpenCode fields through", () => {
+		const result = buildOpenCodeConfig({
+			workingDirectory: "/work/repo",
+			cyrusHome: "/tmp/cyrus",
+			opencodeGlobalConfig: {
+				share: "disabled",
+				formatter: true,
+				provider: {
+					anthropic: {
+						options: {
+							timeout: 600000,
+							setCacheKey: true,
+						},
+					},
+				},
+			},
+		});
+
+		expect(result.config).toMatchObject({
+			share: "disabled",
+			formatter: true,
+			provider: {
+				anthropic: {
+					options: {
+						timeout: 600000,
+						setCacheKey: true,
+					},
+				},
+			},
+		});
+	});
+
+	it("replaces arrays instead of concatenating them", () => {
+		const result = buildOpenCodeConfig({
+			workingDirectory: "/work/repo",
+			cyrusHome: "/tmp/cyrus",
+			opencodeGlobalConfig: {
+				plugin: ["global-plugin", "shared-plugin"],
+			},
+			opencodeRepositoryConfig: {
+				plugin: ["repo-plugin"],
+			},
+		});
+
+		expect(result.config.plugin).toEqual(["repo-plugin"]);
+	});
+
+	it("keeps Cyrus-generated MCP and permission authoritative over overrides", () => {
+		const result = buildOpenCodeConfig({
+			workingDirectory: "/work/repo",
+			cyrusHome: "/tmp/cyrus",
+			opencodeGlobalConfig: {
+				mcp: {
+					linear: { type: "remote", url: "https://global.example/mcp" },
+				},
+				permission: {
+					"*": "allow",
+					read: { "**": "deny" },
+				},
+			},
+			opencodeRepositoryConfig: {
+				mcp: {
+					linear: { type: "remote", url: "https://repo.example/mcp" },
+				},
+				permission: {
+					"*": "allow",
+					read: { "**": "deny" },
+				},
+			},
+			allowedTools: ["Read(**)"],
+			mcpConfig: {
+				linear: {
+					type: "http",
+					url: "https://mcp.linear.app/mcp",
+					headers: { Authorization: "Bearer token" },
+				} as any,
+			},
+		});
+
+		expect(result.config.mcp?.linear).toEqual({
+			type: "remote",
+			url: "https://mcp.linear.app/mcp",
+			headers: { Authorization: "Bearer token" },
+			enabled: true,
+		});
+		expect(result.config.permission).toMatchObject({
+			"*": "deny",
+			read: {
+				"*": "deny",
+				"**": "allow",
+			},
+		});
 	});
 });

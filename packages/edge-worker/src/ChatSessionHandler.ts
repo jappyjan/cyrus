@@ -7,6 +7,7 @@ import type {
 	CyrusAgentSession,
 	IAgentRunner,
 	ILogger,
+	OpenCodeConfigOverrides,
 } from "cyrus-core";
 import { createLogger } from "cyrus-core";
 import { AgentSessionManager } from "./AgentSessionManager.js";
@@ -61,6 +62,12 @@ export interface ChatSessionHandlerDeps {
 	runnerConfigBuilder: RunnerConfigBuilder;
 	/** Factory function that creates the appropriate runner based on config.defaultRunner */
 	createRunner: (config: AgentRunnerConfig) => IAgentRunner;
+	/** Read live global OpenCode config overrides at session-build time */
+	getOpenCodeGlobalConfig?: () => OpenCodeConfigOverrides["config"] | undefined;
+	/** Read live global OpenCode CLI state scope at session-build time */
+	getOpenCodeGlobalStateScope?: () =>
+		| OpenCodeConfigOverrides["stateScope"]
+		| undefined;
 	onWebhookStart: () => void;
 	onWebhookEnd: () => void;
 	onStateChange: () => Promise<void>;
@@ -510,6 +517,8 @@ export class ChatSessionHandler<TEvent> {
 			linearWorkspaceId: provider.getDefaultLinearWorkspaceId(),
 			repository: provider.getDefaultRepository(),
 			repositoryPaths: provider.getRepositoryPaths(),
+			opencodeGlobalConfig: this.deps.getOpenCodeGlobalConfig?.(),
+			opencodeGlobalStateScope: this.deps.getOpenCodeGlobalStateScope?.(),
 			logger: sessionLogger,
 			onMessage: (message: SDKMessage) =>
 				this.handleAgentMessage(sessionId, message),

@@ -1033,6 +1033,8 @@ export class EdgeWorker extends EventEmitter {
 						fallbackModel: this.getDefaultFallbackModelForRunner(runnerType),
 					});
 				},
+				getOpenCodeGlobalConfig: () => this.config.opencode?.config,
+				getOpenCodeGlobalStateScope: () => this.config.opencode?.stateScope,
 				onWebhookStart: () => {
 					this.activeWebhookCount++;
 				},
@@ -6137,6 +6139,8 @@ ${input.userComment}
 			cyrusHome: this.cyrusHome,
 			logger: log,
 			plugins,
+			opencodeGlobalConfig: this.config.opencode?.config,
+			opencodeGlobalStateScope: this.config.opencode?.stateScope,
 			skills: allowedSkillNames,
 			sandboxSettings: this.sdkSandboxSettings ?? undefined,
 			egressCaCertPath: this.egressCaCertPath ?? undefined,
